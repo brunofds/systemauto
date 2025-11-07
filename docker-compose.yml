@@ -1,0 +1,75 @@
+services:
+  # 1. SERVIÇO DE BACKEND (FASTAPI)
+  backend:
+    build:
+      context: ./backend # Pasta onde está o Dockerfile do FastAPI
+      dockerfile: Dockerfile
+    container_name: erp-fastapi-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload # --reload é ótimo para desenvolvimento
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app  # Monta o código-fonte para que o --reload funcione
+    env_file:
+      - .env            # Carrega variáveis de ambiente (DB URLs, chaves)
+    depends_on:
+      - db_pg           # Garante que os DBs iniciem antes da API
+      - db_mongo
+    networks:
+      - erp-network
+
+  # 2. SERVIÇO DE FRONTEND (ANGULAR - Modo Desenvolvimento)
+  frontend:
+    container_name: erp-angular-frontend
+    build:
+      context: ./frontend # Pasta onde está o Dockerfile/código do Angular (Opcional, mas limpo)
+    # Se você não quiser um Dockerfile, pode rodar o dev server diretamente:
+    # image: node:20-alpine
+    # command: npm run start
+    # workdir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Evita que a pasta node_modules local sobrescreva a do container
+    ports:
+      - "4200:4200" # Porta padrão do Angular CLI
+    networks:
+      - erp-network
+
+  # 3. BANCO DE DADOS RELACIONAL (POSTGRESQL) - Fonte da Verdade
+  db_pg:
+    image: postgres:15-alpine
+    container_name: erp-db-postgresql
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Volume persistente para os dados
+      # - ./infra/init-db:/docker-entrypoint-initdb.d # Opcional: scripts de inicialização
+    networks:
+      - erp-network
+
+  # 4. BANCO DE DADOS DE DOCUMENTOS (MONGODB) - Catálogo/Logs
+  db_mongo:
+    image: mongo:6.0
+    container_name: erp-db-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db # Volume persistente para os dados
+    networks:
+      - erp-network
+
+# 5. VOLUMES (Garante que os dados do DB persistam mesmo se os containers pararem)
+volumes:
+  postgres_data:
+  mongo_data:
+
+# 6. REDE (Permite que os containers se comuniquem usando os nomes dos serviços)
+networks:
+  erp-network:
+    driver: bridge
