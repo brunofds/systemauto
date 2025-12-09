@@ -1,6 +1,6 @@
 # frontend/Dockerfile (Modo Desenvolvimento)
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 4200
 
 # Comando para rodar o servidor de desenvolvimento
-CMD ["npm", "run", "start"] # Presume que 'start' no package.json roda 'ng serve'
+CMD npm run start
